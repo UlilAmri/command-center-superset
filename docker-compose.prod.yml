@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    env_file:
+      - docker/.env.production
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 30s
+      retries: 5
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    env_file:
+      - docker/.env.production
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+
+  superset:
+    image: apache/superset:latest
+    restart: unless-stopped
+    env_file:
+      - docker/.env.production
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./docker:/app/docker
+      - superset_home:/app/superset_home
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8088/health || exit 1"]
+      interval: 30s
+      retries: 5
+    ports:
+      - "8088:8088"   # Coolify akan membuat HTTP/HTTPS endpoint
